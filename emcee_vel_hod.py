@@ -6,7 +6,11 @@ import corner
 import matplotlib.pyplot as plt
 from halotools.sim_manager import CachedHaloCatalog, FakeSim
 from halotools.empirical_models import PrebuiltHodModelFactory, Zheng07Cens, Zheng07Sats, TrivialPhaseSpace, NFWPhaseSpace, HodModelFactory
-from halotools.mock_observables import wp,return_xyz_formatted_array
+from halotools.mock_observables import return_xyz_formatted_array
+from Corrfunc.theory.wp import wp
+#import os
+#os.environ["OMP_NUM_THREADS"] = "40"
+
 
 bin_edges = np.logspace(-1, 1.5, 30)
 wp_val = np.array([511.89106934, 434.72817298, 367.51894291, 308.67955506,
@@ -346,10 +350,14 @@ def lnlike(theta):#, wp_val, wperr, model_instance):
                                 velocity_distortion_dimension='z')
     pi_max = 60.
     Lbox = 250.
-    model = wp(pos_zdist, bin_edges, pi_max, period=Lbox)
+    nthreads = 1
+    #model = wp(pos_zdist, bin_edges, pi_max, period=Lbox)
+    pos_zdist[:,2][np.where(pos_zdist[:,2]< 0.0)]= 0.0
+    pos_zdist[:,2][np.where(pos_zdist[:,2]> 250.0)]= 250.0
+    model = wp(Lbox,pi_max,nthreads,bin_edges,pos_zdist[:,0],pos_zdist[:,1],pos_zdist[:,2])
     inv_sigma2 = 1.0/err**2.
-    
-    return -0.5*(np.sum((wp_val-model)**2*inv_sigma2 - np.log(inv_sigma2)))
+
+    return -0.5*(np.sum((wp_val-model['wp'])**2*inv_sigma2 - np.log(inv_sigma2)))
 
 #log prior
 def lnprior(theta):
@@ -358,10 +366,9 @@ def lnprior(theta):
         return 0.0
     return -np.inf
 
-#log prop
+#log prob
 def lnprob(theta):#, wp_val, wperr, model_instance):
     lp = lnprior(theta)
-    print("progress")
     if not np.isfinite(lp):
         return -np.inf
     return lp + lnlike(theta)#, wp_val, wperr, model_instance)
@@ -374,7 +381,7 @@ with Pool() as pool:
     sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob,pool=pool) 
                                 #args=(wp_val, err, model_instance),pool=pool)
     start = time.time()
-    sampler.run_mcmc(pos, 250)
+    sampler.run_mcmc(pos, 10000,progress=True)
     end = time.time()
     multi_time = end - start
     print("Multiprocessing took {0:.1f} seconds".format(multi_time))
@@ -388,7 +395,7 @@ f.write(str(sampler.chain[np.where(sampler.lnprobability==sampler.lnprobability.
 f.close()
 c = ['#fee8c8','#fdbb84','#e34a33']
 for i in range(3):
-    plt.plot(sampler.chain[i+1,1:100,0],c= c[-i])
+    plt.plot(sampler.chain[i+1,2000:4000,0],c= c[-i])
     #plt.ylim(150,250)
 plt.yscale('log')
 plt.xlabel('step')
@@ -396,7 +403,7 @@ plt.ylabel('logVmaxmin')
 plt.savefig('logVmaxmin_v_step_test.png')
 c = ['#fee8c8','#fdbb84','#e34a33']
 for i in range(3):
-    plt.plot(sampler.chain[i+1,1:100,1],c= c[-i])
+    plt.plot(sampler.chain[i+1,2000:4000,1],c= c[-i])
     #plt.ylim(150,250)                                                          
 plt.yscale('log')
 plt.xlabel('step')
@@ -405,7 +412,7 @@ plt.savefig('sigmalogVmax_v_step_test.png')
 
 c = ['#fee8c8','#fdbb84','#e34a33']
 for i in range(3):
-    plt.plot(sampler.chain[i+1,1:100,2],c= c[-i])
+    plt.plot(sampler.chain[i+1,2000:4000,2],c= c[-i])
     #plt.ylim(150,250)                                                          
 plt.yscale('log')
 plt.xlabel('step')
@@ -414,7 +421,7 @@ plt.savefig('alpha_v_step_test.png')
 
 c = ['#fee8c8','#fdbb84','#e34a33']
 for i in range(3):
-    plt.plot(sampler.chain[i+1,1:100,3],c= c[-i])
+    plt.plot(sampler.chain[i+1,2000:4000,3],c= c[-i])
     #plt.ylim(150,250)                                                          
 plt.yscale('log')
 plt.xlabel('step')
@@ -423,7 +430,7 @@ plt.savefig('logVmax0_v_step_test.png')
 
 c = ['#fee8c8','#fdbb84','#e34a33']
 for i in range(3):
-    plt.plot(sampler.chain[i+1,1:100,4],c= c[-i])
+    plt.plot(sampler.chain[i+1,2000:4000,4],c= c[-i])
     #plt.ylim(150,250)                                                          
 plt.yscale('log')
 plt.xlabel('step')
