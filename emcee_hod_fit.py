@@ -8,7 +8,7 @@ from multiprocessing import Pool, cpu_count
 import emcee
 import corner
 from Corrfunc.theory.wp import wp
-import zehavi_data_file_19,MCMC_data_file,guo_data_file
+import zehavi_data_file_20
 from numpy.linalg import inv
 
 from warnings import simplefilter
@@ -16,7 +16,6 @@ from warnings import simplefilter
 simplefilter(action='ignore', category=FutureWarning)
 
 import argparse
-
 parser = argparse.ArgumentParser(description='data type')
 parser.add_argument('--file', type=str,
                     help='Name of data file to fit')
@@ -24,10 +23,19 @@ parser.add_argument('--catalog',type=str)
 parser.add_argument('--output',type=str)
 args = parser.parse_args()
 
+import logging
+log_fname = str(args.output[0:-2])+'log'
+logger = logging.getLogger(str(args.output[0:-3]))
+hdlr = logging.FileHandler(log_fname,mode='w')
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+hdlr.setFormatter(formatter)
+logger.addHandler(hdlr) 
+logger.setLevel(logging.INFO)
+
 if args.file == "zehavi":
-    wp_ng_vals = zehavi_data_file_19.get_wp()
-    bin_edges = zehavi_data_file_19.get_bins()
-    cov_matrix = zehavi_data_file_19.get_cov()
+    wp_ng_vals = zehavi_data_file_20.get_wp()
+    bin_edges = zehavi_data_file_20.get_bins()
+    cov_matrix = zehavi_data_file_20.get_cov()
     invcov = inv(cov_matrix)
     ng = wp_ng_vals[0]
     ng_cov = 0.00007
@@ -120,7 +128,7 @@ def lnlike(theta):
 def lnprior(theta):
     logMmin, sigma_logM, alpha, logM0, logM1 = theta
     #if 1.0<logMmin<4.0 and 0.01<sigma_logM<2.5 and 1.0<alpha<5.0 and 1.0<logM0<4.0 and 1.0<logM1<4.0:
-    if 10.0<logMmin<14.0 and 0.01<sigma_logM<2.5 and 0.85<alpha<5.0 and 10.0<logM0<14.0 and 10.0<logM1<14.0:     
+    if logMmin_r[0]<logMmin<logMmin_r[1] and sigma_logM_r[0]<sigma_logM<sigma_logM_r[1] and alpha_r[0]<alpha<alpha_r[1] and logM0_r[0]<logM0<logM0_r[1] and logM1_r[0]<logM1<logM1_r[1]:     
         return 0.0
     return -np.inf
 
@@ -130,10 +138,19 @@ def lnprob(theta):
         return -np.inf
     return lp + lnlike(theta)
 
-ndim, nwalkers = 5, 100
+ndim, nwalkers, nsteps = 5, 20, 50000
+
+#####prior ranges
+logMmin_r = [10.0,14.0]
+sigma_logM_r = [0.01,2.5]
+alpha_r = [0.85,5.0]
+logM0_r = [10.0,14.0]
+logM1_r = [10.0,14.0]
+
 #guess = 2.46, 1.38, 2.73, 1.30, 2.34
 guess = 12.1, 1.0, 1.0, 10.96, 13.19
 pos = [guess + 1e-4*np.random.randn(ndim) for i in range(nwalkers)]
+
 # Set up the backend
 # Don't forget to clear it in case the file already exists
 filename = args.output
@@ -144,12 +161,18 @@ with Pool() as pool:
     sampler = emcee.EnsembleSampler(nwalkers, ndim, 
                                     lnprob, pool=pool,backend=backend)
     start = time.time()
-    sampler.run_mcmc(pos, 10000, progress=True, store=True)
+    sampler.run_mcmc(pos, nsteps, progress=True, store=True)
     end = time.time()
     multi_time = end - start
     print("Multiprocessing took {0:.1f} seconds".format(multi_time))
 
-samples = sampler.get_chain()
-#f = open('param.txt','w')
-#f.write(str(samples[np.where(sampler.lnprobability==sampler.lnprobability.max())]))
-#f.close()
+logger.info(args.output)
+logger.info("guess: " + str(guess))
+logger.info("ndim, nwalkers, nsteps: "+str(ndim)+","+str(nwalkers)+","+str(nsteps))
+logger.info("logMmin_r: " + str(logMmin_r))
+logger.info("sigma_logM_r: " + str(sigma_logM_r))
+logger.info("alpha_r: " + str(alpha_r))
+logger.info("logM0_r: " + str(logM0_r))
+logger.info("logM1_r: " + str(logM1_r))
+logger.info("Final size: {0}".format(backend.iteration))
+
