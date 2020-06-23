@@ -140,9 +140,8 @@ def lnprior(theta):
 def lnprob(theta):                      
     lp = lnprior(theta)
     if not np.isfinite(lp):
-        return -np.inf
-    print(lp + lnlike(theta),cur_wp)
-    return lp + lnlike(theta), cur_wp
+        return -np.inf, cur_wp
+    return lp + lnlike(theta),cur_wp
 
 ndim, nwalkers, nsteps = 5, 20, 5e4
 #####prior ranges
