@@ -25,7 +25,7 @@ args = parser.parse_args()
 
 import logging
 log_fname = str(args.output[0:-2])+'log'
-logger = logging.getLogger(str(args.output[0:-3]))
+logger = logging.getLogger(str(args.output[0:-2]))
 hdlr = logging.FileHandler(log_fname,mode='w')
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 hdlr.setFormatter(formatter)
@@ -80,7 +80,11 @@ elif args.catalog == "smdpl":
     halocat.redshift=0.
 elif args.catalog  == "mdr1":
     halocat = CachedHaloCatalog(fname = '/home/lom31/.astropy/cache/halotools/halo_catalogs/multidark/rockstar/hlist_0.68215.list.halotools_v0p4.hdf5',update_cached_fname = True)
-model_instance.populate_mock(halocat)
+
+try:
+    model_instance.mock.populate()
+except:
+    model_instance.populate_mock(halocat)
 
 def lnlike(theta):
 
@@ -117,11 +121,12 @@ def lnlike(theta):
 
     wp_calc = wp(Lbox,pi_max,nthreads,bin_edges,pos_zdist[:,0],pos_zdist[:,1],pos_zdist[:,2],verbose=False)#,xbin_refine_factor=3, ybin_refine_factor=3, zbin_refine_factor=2)
 
-    #tot_gals = (np.sum(model_instance.mock.galaxy_table['halo_num_centrals'])+np.sum(model_instance.mock.galaxy_table['halo_num_satellites']))
-    #num_den = tot_gals/(Lbox**3)
-
     wp_diff = wp_vals-wp_calc['wp']
     ng_diff = ng-model_instance.mock.number_density
+    
+    #save current wp calculated value for blobs
+    global cur_wp
+    cur_wp = wp_calc['wp'][:]
 
     return -0.5*np.dot(wp_diff, np.dot(invcov, wp_diff)) + -0.5*(ng_diff**2)/(ng_cov**2)
 
@@ -136,10 +141,10 @@ def lnprob(theta):
     lp = lnprior(theta)
     if not np.isfinite(lp):
         return -np.inf
-    return lp + lnlike(theta)
+    print(lp + lnlike(theta),cur_wp)
+    return lp + lnlike(theta), cur_wp
 
-ndim, nwalkers, nsteps = 5, 20, 50000
-
+ndim, nwalkers, nsteps = 5, 20, 5e4
 #####prior ranges
 logMmin_r = [10.0,14.0]
 sigma_logM_r = [0.01,2.5]
@@ -148,24 +153,11 @@ logM0_r = [10.0,14.0]
 logM1_r = [10.0,14.0]
 
 #guess = 2.46, 1.38, 2.73, 1.30, 2.34
-guess = 12.1, 1.0, 1.0, 10.96, 13.19
+guess =  11.83, 0.25, 1.0, 12.35, 13.08
 pos = [guess + 1e-4*np.random.randn(ndim) for i in range(nwalkers)]
 
-# Set up the backend
-# Don't forget to clear it in case the file already exists
-filename = args.output
-backend = emcee.backends.HDFBackend(filename)
-backend.reset(nwalkers, ndim)
 
-with Pool() as pool:
-    sampler = emcee.EnsembleSampler(nwalkers, ndim, 
-                                    lnprob, pool=pool,backend=backend)
-    start = time.time()
-    sampler.run_mcmc(pos, nsteps, progress=True, store=True)
-    end = time.time()
-    multi_time = end - start
-    print("Multiprocessing took {0:.1f} seconds".format(multi_time))
-
+#write out configuration to log file
 logger.info(args.output)
 logger.info("guess: " + str(guess))
 logger.info("ndim, nwalkers, nsteps: "+str(ndim)+","+str(nwalkers)+","+str(nsteps))
@@ -174,5 +166,21 @@ logger.info("sigma_logM_r: " + str(sigma_logM_r))
 logger.info("alpha_r: " + str(alpha_r))
 logger.info("logM0_r: " + str(logM0_r))
 logger.info("logM1_r: " + str(logM1_r))
-logger.info("Final size: {0}".format(backend.iteration))
 
+
+# Set up the backend
+# Don't forget to clear it in case the file already exists
+filename = args.output
+backend = emcee.backends.HDFBackend(filename)
+backend.reset(nwalkers, ndim)
+
+with Pool() as pool:
+    sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, 
+                                    pool=pool,backend=backend)
+    start = time.time()
+    sampler.run_mcmc(pos, nsteps, progress=True, store=True)
+    end = time.time()
+    multi_time = end - start
+    print("Multiprocessing took {0:.1f} seconds".format(multi_time))
+
+logger.info("Final size: {0}".format(backend.iteration))
