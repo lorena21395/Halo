@@ -56,12 +56,12 @@ elif args.file == "guo":
     wp_vals = wp_ng_vals[1:len(wp_ng_vals)]
     ng = wp_ng_vals[0]
 
-#cens_occ_model = Zheng07Cens(prim_haloprop_key = 'halo_vmax')
-cens_occ_model = Zheng07Cens()
+cens_occ_model = Zheng07Cens(prim_haloprop_key = 'halo_vmax')
+#cens_occ_model = Zheng07Cens()
 cens_prof_model = TrivialPhaseSpace()
 
-#sats_occ_model =  Zheng07Sats(prim_haloprop_key = 'halo_vmax',modulate_with_cenocc=True)
-sats_occ_model =  Zheng07Sats(modulate_with_cenocc=True)
+sats_occ_model =  Zheng07Sats(prim_haloprop_key = 'halo_vmax',modulate_with_cenocc=True)
+#sats_occ_model =  Zheng07Sats(modulate_with_cenocc=True)
 sats_prof_model = NFWPhaseSpace()
 
 model_instance = HodModelFactory(centrals_occupation = cens_occ_model,
@@ -145,14 +145,14 @@ def lnprob(theta):
 
 ndim, nwalkers, nsteps = 5, 20, 5e4
 #####prior ranges
-logMmin_r = [10.0,14.0]
+logMmin_r = [1.0,4.0]#[10.0,14.0]
 sigma_logM_r = [0.01,2.5]
 alpha_r = [0.85,5.0]
-logM0_r = [10.0,14.0]
-logM1_r = [10.0,14.0]
+logM0_r = [1.0,4.0]
+logM1_r = [1.0,4.0]
 
-#guess = 2.46, 1.38, 2.73, 1.30, 2.34
-guess =  11.83, 0.25, 1.0, 12.35, 13.08
+guess = 2.46, 1.38, 2.73, 1.30, 2.34
+#guess =  11.83, 0.25, 1.0, 12.35, 13.08
 pos = [guess + 1e-4*np.random.randn(ndim) for i in range(nwalkers)]
 
 
