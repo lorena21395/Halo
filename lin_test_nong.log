@@ -1,0 +1,4 @@
+2020-08-14 10:57:53,594 INFO lin_test_nong.h5
+2020-08-14 10:57:53,594 INFO guess: [10.0, 1.8]
+2020-08-14 10:57:53,594 INFO ndim, nwalkers, nsteps: 2,20,10000
+2020-08-14 10:59:22,324 INFO Final size: 10000

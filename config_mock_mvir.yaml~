@@ -1,0 +1,26 @@
+data: mock
+
+data_file: mock_data.npz
+
+sim: smdpl
+
+param: mvir
+
+file_ext: /home/lom31/emcee_fits/july_2020/
+
+output: mock_data.h5
+
+ndim: 5
+
+nwalkers: 10
+
+nsteps: 50000
+
+prior_ranges:
+     logMmin_r: [10.0,14.0]
+     sigma_logM_r: [0.01,2.5]
+     alpha_r: [0.85,5.0]
+     logM0_r: [10.0,14.0]
+     logM1_r: [10.0,14.0]
+
+guess: [11.89, 0.05, 1.03, 12.24, 13.19]
