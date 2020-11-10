@@ -1,0 +1,26 @@
+data: zehavi
+
+data_file: zehavi_data_file_21
+
+sim: smdpl
+
+param: vmax
+
+file_ext: /home/lom31/emcee_fits/october_2020/
+
+output: zehavi_smdpl_vmax_m21_1.h5
+
+ndim: 5
+
+nwalkers: 20
+
+nsteps: 50000
+
+prior_ranges:
+     logMmin_r: [1.0,4.0]
+     sigma_logM_r: [0.01,2.5]
+     alpha_r: [0.5,5.0]
+     logM0_r: [1.0,4.0]
+     logM1_r: [1.0,4.0]
+
+guess: [2.29, 0.24, 2.37, 2.30, 2.39]
